@@ -165,7 +165,7 @@ export default function HomePage() {
         )}
 
         <div className="flex flex-1 items-center justify-center">
-          <SosButton active={sosActive} onPress={handleSosPress} disabled={loading} />
+          <SosButton active={sosActive} onPress={handleSosPress}/>
         </div>
       </main>
 
