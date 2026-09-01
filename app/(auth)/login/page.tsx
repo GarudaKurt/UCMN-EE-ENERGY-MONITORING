@@ -24,6 +24,7 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient();
 
+  
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -48,7 +49,8 @@ export default function LoginPage() {
       return;
     }
 
-
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log("Logged-in user id:", user?.id);
     router.push("/home");
     router.refresh();
   };
