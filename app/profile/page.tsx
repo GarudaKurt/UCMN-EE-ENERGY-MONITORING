@@ -5,7 +5,7 @@ import MenuRow from "@/components/menu-row/MenuRow";
 import BottomNav from "@/components/bottom-nav/BottomNav";
 const MENU_ITEMS = [
   { label: "Account Details", href: "/profile/account-details" },
-  { label: "Setup SoS", href: "/profile/setup-sos" },
+  { label: "Setup Meter", href: "/profile/setup-meter" },
 ];
 
 export default function ProfilePage() {
