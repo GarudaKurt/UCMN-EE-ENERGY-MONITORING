@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, AlertCircle, Users, User, LucideIcon } from "lucide-react";
+import { Home, BarChart, User, LucideIcon } from "lucide-react";
 
 interface TabItem {
   label: string;
@@ -10,7 +10,7 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { label: "Home", href: "/home", icon: Home },
-  { label: "SOS", href: "/profile/incident-report", icon: AlertCircle },
+  { label: "Monitor", href: "/profile/monitoring", icon: BarChart },
   { label: "Profile", href: "/profile", icon: User },
 ];
 

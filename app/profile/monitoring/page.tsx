@@ -7,7 +7,7 @@ import RoomEnergyCard from "@/components/romeenergy-card/RomeenergyCard";
 
 // Map each PZEM meter's device_id (as stored in sensors.device_id) to a room.
 // Update the deviceId values to match what your nodered flow writes.
-const ROOMS: RoomConfig[] = [
+const ROOMS = [
   {
     id: "master-bedroom",
     label: "Master Bedroom",
