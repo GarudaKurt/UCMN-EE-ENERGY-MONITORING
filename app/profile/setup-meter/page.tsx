@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/page-header/PageHeader";
 import FormField from "@/components/form-field/FormFields";
@@ -25,7 +25,7 @@ type RoomKwh = Record<GroupId, string>;
 
 export default function EnergyTargetSetup() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [targetStartDate, setTargetStartDate] = useState(todayIso());
   const [targetEndDate, setTargetEndDate] = useState(todayIso());
@@ -54,7 +54,7 @@ export default function EnergyTargetSetup() {
       }
 
       const { data: row, error: rowError } = await supabase
-        .from("energy_targets")
+        .from("setup_energy")
         .select(
           "target_start_date, target_end_date, sala_kwh, living_room_kwh, master_bedroom_kwh, rate_per_kwh"
         )
@@ -62,7 +62,7 @@ export default function EnergyTargetSetup() {
         .single();
 
       if (rowError) {
-        console.warn("No existing energy_targets row yet:", rowError.message);
+        console.warn("No existing setup_energy row yet:", rowError.message);
       } else {
         setTargetStartDate(row?.target_start_date ?? todayIso());
         setTargetEndDate(row?.target_end_date ?? todayIso());
@@ -106,7 +106,7 @@ export default function EnergyTargetSetup() {
       return;
     }
 
-    const { error: upsertError } = await supabase.from("energy_targets").upsert(
+    const { error: upsertError } = await supabase.from("setup_energy").upsert(
       {
         user_id: user.id,
         target_start_date: targetStartDate,
@@ -126,7 +126,7 @@ export default function EnergyTargetSetup() {
       return;
     }
 
-    router.push("/energy");
+    router.push("/home");
     router.refresh();
   };
 

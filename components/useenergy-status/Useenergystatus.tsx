@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ENERGY_GROUP_DEFS, EnergyGroup, GroupId } from "../energy/Energy";
 const TABLE = "pzem_status";
 
-function toGroups(rows: any[]): EnergyGroup[] {
+interface PzemRow {
+  group_id?: string;
+  ampere?: number | string | null;
+  power?: number | string | null;
+  energy?: number | string | null;
+  is_on?: boolean | null;
+}
+
+function toGroups(rows: PzemRow[]): EnergyGroup[] {
   return ENERGY_GROUP_DEFS.map((def) => {
     const row = rows.find((r) => r.group_id === def.id);
     return {
@@ -23,7 +31,10 @@ function toGroups(rows: any[]): EnergyGroup[] {
 }
 
 export function useEnergyStatus() {
-  const supabase = createClient();
+  // Keep the browser client stable across renders. Recreating it here makes
+  // the effect below reload the database snapshot after every state update,
+  // which overwrites an optimistic toggle before it can settle.
+  const supabase = useMemo(() => createClient(), []);
   const [groups, setGroups] = useState<EnergyGroup[]>(toGroups([]));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +52,7 @@ export function useEnergyStatus() {
         console.warn("Could not load pzem_status:", fetchError.message);
         setError("Could not load live readings.");
       } else {
-        setGroups(toGroups(data ?? []));
+        setGroups(toGroups((data ?? []) as PzemRow[]));
       }
       setLoading(false);
     };
@@ -56,14 +67,18 @@ export function useEnergyStatus() {
         { event: "*", schema: "public", table: TABLE },
         (payload) => {
           setGroups((prev) => {
-            const row: any = payload.new ?? payload.old;
+            const row = (payload.new ?? payload.old) as PzemRow | null;
             if (!row?.group_id) return prev;
+            const groupId = ENERGY_GROUP_DEFS.some((def) => def.id === row.group_id)
+              ? (row.group_id as GroupId)
+              : null;
+            if (!groupId) return prev;
             // Ignore echoes of our own optimistic toggle while it's in flight.
-            if (togglingRef.current.has(row.group_id) && payload.eventType === "UPDATE") {
-              togglingRef.current.delete(row.group_id);
+            if (togglingRef.current.has(groupId) && payload.eventType === "UPDATE") {
+              togglingRef.current.delete(groupId);
             }
             return prev.map((g) =>
-              g.id === row.group_id
+              g.id === groupId
                 ? {
                     ...g,
                     isOn: row.is_on ?? g.isOn,

@@ -1,20 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronDown } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { generateMockReadings } from "../mockData/MockReadings";
-// Set NEXT_PUBLIC_USE_MOCK_ENERGY_DATA=true in .env.local to preview this
-// component with generated data instead of hitting Supabase. Flip it back
-// to unset/false (or delete the line) to go live — no code changes needed.
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_ENERGY_DATA === "true";
-
-export function generateMockReadingsForMonth(deviceId: string, monthDate: Date) {
-  const from = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-  const to = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-  return generateMockReadings(deviceId, from, to);
-}
+import { CurrentReading, roomNameForId } from "@/lib/energy/readings";
 
 export interface RoomConfig {
   id: string;
@@ -28,16 +17,6 @@ export interface RoomConfig {
     chipText: string;
     ring: string;
     dot: string;
-  };
-}
-
-interface SensorRow {
-  id: number;
-  created_at: string;
-  sensors: {
-    device_id?: string;
-    energy_kwh?: number;
-    energy?: number;
   };
 }
 
@@ -79,76 +58,42 @@ function buildMonthGrid(viewMonth: Date): (Date | null)[][] {
   return weeks;
 }
 
-export default function RoomEnergyCard({ room }: { room: RoomConfig }) {
-  const supabase = createClient();
+interface RoomEnergyCardProps {
+  room: RoomConfig;
+  readings: CurrentReading[];
+  loading: boolean;
+  error: string | null;
+}
+
+export default function RoomEnergyCard({ room, readings, loading, error }: RoomEnergyCardProps) {
   const Icon = room.icon;
 
   const [expanded, setExpanded] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
-  const [dailyTotals, setDailyTotals] = useState<Map<string, number>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const todayKey = dateKey(new Date());
+  const roomName = roomNameForId(room.id);
 
-  // Fetch and sum readings for the currently viewed month.
-  // Runs on mount (so the collapsed card can show "today") and whenever
-  // the room or the viewed month changes.
-  useEffect(() => {
-    let cancelled = false;
+  const roomReadings = useMemo(
+    () => readings.filter((reading) => reading.room === roomName),
+    [readings, roomName]
+  );
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+  const dailyTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    const monthStart = startOfMonth(viewMonth).getTime();
+    const nextMonthStart = startOfNextMonth(viewMonth).getTime();
 
-      let rows: SensorRow[];
+    for (const reading of roomReadings) {
+      const timestamp = new Date(reading.timestamp).getTime();
+      if (timestamp < monthStart || timestamp >= nextMonthStart) continue;
+      const key = dateKey(new Date(reading.timestamp));
+      totals.set(key, (totals.get(key) ?? 0) + reading.kWh);
+    }
 
-      if (USE_MOCK_DATA) {
-        // Local/offline preview path — no Supabase call at all.
-        rows = generateMockReadingsForMonth(room.deviceId, viewMonth);
-      } else {
-        const from = startOfMonth(viewMonth).toISOString();
-        const to = startOfNextMonth(viewMonth).toISOString();
-
-        const { data, error: fetchError } = await supabase
-          .from("nodered_sensors")
-          .select("id, created_at, sensors")
-          .contains("sensors", { device_id: room.deviceId })
-          .gte("created_at", from)
-          .lt("created_at", to)
-          .order("created_at", { ascending: true });
-
-        if (cancelled) return;
-
-        if (fetchError) {
-          setError("Couldn't load this meter's readings.");
-          setDailyTotals(new Map());
-          setLoading(false);
-          return;
-        }
-
-        rows = (data ?? []) as SensorRow[];
-      }
-
-      if (cancelled) return;
-
-      const totals = new Map<string, number>();
-      for (const row of rows) {
-        const kwh = row.sensors?.energy_kwh ?? row.sensors?.energy ?? 0;
-        const key = dateKey(new Date(row.created_at));
-        totals.set(key, (totals.get(key) ?? 0) + kwh);
-      }
-
-      setDailyTotals(totals);
-      setLoading(false);
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, room.deviceId, viewMonth]);
+    return totals;
+  }, [roomReadings, viewMonth]);
 
   const todayTotal = dailyTotals.get(todayKey) ?? 0;
 
@@ -159,9 +104,10 @@ export default function RoomEnergyCard({ room }: { room: RoomConfig }) {
 
   const tableRows = useMemo(
     () =>
-      Array.from(dailyTotals.entries())
-        .sort((a, b) => (a[0] < b[0] ? 1 : -1)),
-    [dailyTotals]
+      [...roomReadings].sort(
+        (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)
+      ),
+    [roomReadings]
   );
 
   const weeks = useMemo(() => buildMonthGrid(viewMonth), [viewMonth]);
@@ -187,7 +133,7 @@ export default function RoomEnergyCard({ room }: { room: RoomConfig }) {
 
         <span className="flex-1">
           <span className="block text-sm font-medium text-neutral-900">{room.label}</span>
-          <span className="block text-xs text-neutral-500">Today's usage</span>
+          <span className="block text-xs text-neutral-500">Today&apos;s usage</span>
         </span>
 
         <span className="text-right">
@@ -291,30 +237,39 @@ export default function RoomEnergyCard({ room }: { room: RoomConfig }) {
                   <table className="w-full border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-neutral-100 text-neutral-400">
-                        <th className="px-3 py-2 text-xs font-medium">Date</th>
+                        <th className="px-3 py-2 text-xs font-medium">Room</th>
+                        <th className="px-3 py-2 text-xs font-medium">Recorded</th>
                         <th className="px-3 py-2 text-right text-xs font-medium">kWh</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {tableRows.map(([key, kwh]) => {
-                        const d = new Date(`${key}T00:00:00`);
+                      {tableRows.map((reading) => {
+                        const d = new Date(reading.timestamp);
+                        const key = dateKey(d);
                         const isSelected = key === selectedDay;
                         return (
                           <tr
-                            key={key}
+                            key={`${reading.room}-${reading.timestamp}-${reading.kWh}`}
                             className={`border-b border-neutral-50 last:border-0 ${
                               isSelected ? room.accent.chipBg : ""
                             }`}
                           >
                             <td className="px-3 py-2 text-neutral-700">
+                              {reading.room}
+                            </td>
+                            <td className="px-3 py-2 text-neutral-700">
                               {d.toLocaleDateString(undefined, {
                                 weekday: "short",
                                 month: "short",
                                 day: "numeric",
+                              })}{" "}
+                              {d.toLocaleTimeString(undefined, {
+                                hour: "numeric",
+                                minute: "2-digit",
                               })}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums text-neutral-900">
-                              {kwh.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                              {reading.kWh.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </td>
                           </tr>
                         );

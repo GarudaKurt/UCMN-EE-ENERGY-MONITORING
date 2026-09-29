@@ -4,13 +4,15 @@ import { BedDouble, Sofa, Armchair } from "lucide-react";
 import HomeHeader from "@/components/home-header/HomeHeader";
 import BottomNav from "@/components/bottom-nav/BottomNav";
 import RoomEnergyCard from "@/components/romeenergy-card/RomeenergyCard";
+import { useEnergyReadings } from "@/hooks/useEnergyReadings";
+import { roomNameForId } from "@/lib/energy/readings";
 
 // Map each PZEM meter's device_id (as stored in sensors.device_id) to a room.
 // Update the deviceId values to match what your nodered flow writes.
 const ROOMS = [
   {
     id: "master-bedroom",
-    label: "Master Bedroom",
+    label: "Master Room",
     deviceId: "PZEM-MASTER-BEDROOM",
     icon: BedDouble,
     accent: {
@@ -47,18 +49,54 @@ const ROOMS = [
 ];
 
 export default function EnergyHistoryPage() {
+  const { readings, loading, error } = useEnergyReadings();
+  const roomTotals = ROOMS.map((room) => ({
+    ...room,
+    total: readings
+      .filter((reading) => reading.room === roomNameForId(room.id))
+      .reduce((sum, reading) => sum + reading.kWh, 0),
+  }));
+  const overallTotal = readings.reduce((sum, reading) => sum + reading.kWh, 0);
+
   return (
     <div className="flex min-h-screen flex-col bg-neutral-100">
       <HomeHeader name="Energy History" hasNotification={false} />
 
       <main className="flex flex-1 flex-col gap-4 px-4 pb-6 pt-4">
         <p className="text-xs text-neutral-500">
-          Daily electricity usage per room. Tap a room to see its calendar and totals.
+          Sensor reading history and energy totals for each monitored room.
         </p>
+
+        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+
+        <section className="rounded-2xl bg-neutral-900 p-4 text-white">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-neutral-400">Overall total</p>
+            <p className="text-lg font-semibold tabular-nums">
+              {overallTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })} kWh
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {roomTotals.map((room) => (
+              <div key={room.id} className="rounded-xl bg-white/10 p-2">
+                <p className="text-[11px] text-neutral-300">{room.label}</p>
+                <p className="mt-1 text-sm font-semibold tabular-nums">
+                  {room.total.toLocaleString(undefined, { maximumFractionDigits: 2 })} kWh
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <div className="flex flex-col gap-3">
           {ROOMS.map((room) => (
-            <RoomEnergyCard key={room.id} room={room} />
+            <RoomEnergyCard
+              key={room.id}
+              room={room}
+              readings={readings}
+              loading={loading}
+              error={error}
+            />
           ))}
         </div>
       </main>
