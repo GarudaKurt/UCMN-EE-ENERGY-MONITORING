@@ -34,12 +34,12 @@ export default function EnergyGroupCard({ group, onToggle, disabled }: EnergyGro
           aria-label={`Turn ${name} ${isOn ? "off" : "on"}`}
           onClick={onToggle}
           disabled={disabled}
-          className="relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50"
+          className="relative flex h-6 w-11 shrink-0 items-center overflow-hidden rounded-full p-0 transition-colors disabled:opacity-50"
           style={{ backgroundColor: isOn ? color : "#D4D4D4" }}
         >
           <span
-            className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-            style={{ transform: isOn ? "translateX(22px)" : "translateX(2px)" }}
+            className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
+            style={{ transform: isOn ? "translateX(20px)" : "translateX(0)" }}
           />
         </button>
       </div>
