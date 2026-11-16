@@ -157,7 +157,7 @@ export function useEnergyStatus() {
 
     const { error: updateError } = await supabase
       .from(TOGGLE_TABLE)
-      .update({ is_on: nextOn })
+      .update({ is_on: nextOn, updated_at: new Date().toISOString() })
       .eq("device_id", SWITCH_DEVICE_ID)
       .eq("sensor", GROUP_TO_SWITCH_SENSOR[id]);
 

@@ -125,7 +125,7 @@ export function useEnergyTargetStatus() {
     if (decision === "pause") {
       const { error: toggleError } = await supabase
         .from(SWITCH_TABLE)
-        .update({ is_on: false })
+        .update({ is_on: false, updated_at: new Date().toISOString() })
         .eq("device_id", SWITCH_DEVICE_ID)
         .eq("sensor", GROUP_TO_SWITCH_SENSOR[roomId]);
       if (toggleError) {
