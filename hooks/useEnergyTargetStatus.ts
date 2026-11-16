@@ -23,6 +23,13 @@ export interface EnergyTargetStatus {
 }
 
 const TABLE = "energy_target_status";
+const SWITCH_TABLE = "pzem_switches";
+const SWITCH_DEVICE_ID = "esp32-monitoring";
+const GROUP_TO_SWITCH_SENSOR: Record<GroupId, string> = {
+  sala: "sala",
+  "living-room": "livingroom",
+  "master-bedroom": "master",
+};
 
 function monthStartInManila(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -117,9 +124,10 @@ export function useEnergyTargetStatus() {
 
     if (decision === "pause") {
       const { error: toggleError } = await supabase
-        .from("pzem_status")
+        .from(SWITCH_TABLE)
         .update({ is_on: false })
-        .eq("group_id", roomId);
+        .eq("device_id", SWITCH_DEVICE_ID)
+        .eq("sensor", GROUP_TO_SWITCH_SENSOR[roomId]);
       if (toggleError) {
         setError("The room could not be paused.");
         return false;

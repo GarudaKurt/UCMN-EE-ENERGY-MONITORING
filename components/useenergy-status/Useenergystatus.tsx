@@ -5,7 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { ENERGY_GROUP_DEFS, EnergyGroup, GroupId, SENSOR_TO_GROUP } from "../energy/Energy";
 
 const LIVE_TABLE = "live_sensor_readings";
-const TOGGLE_TABLE = "pzem_status";
+const TOGGLE_TABLE = "pzem_switches";
+const SWITCH_DEVICE_ID = "esp32-monitoring";
+const GROUP_TO_SWITCH_SENSOR: Record<GroupId, string> = {
+  sala: "sala",
+  "living-room": "livingroom",
+  "master-bedroom": "master",
+};
 
 interface LiveSensorRow {
   device_id?: string;
@@ -21,7 +27,8 @@ interface LiveSensorRow {
 }
 
 interface ToggleRow {
-  group_id?: string;
+  device_id?: string;
+  sensor?: string;
   is_on?: boolean | null;
 }
 
@@ -32,7 +39,7 @@ function toGroups(liveRows: LiveSensorRow[], toggleRows: ToggleRow[]): EnergyGro
       new Date(b.updated_at ?? b.recorded_at ?? 0).getTime() -
       new Date(a.updated_at ?? a.recorded_at ?? 0).getTime()
     )[0];
-    const toggleRow = toggleRows.find((row) => row.group_id === def.id);
+    const toggleRow = toggleRows.find((row) => row.sensor === GROUP_TO_SWITCH_SENSOR[def.id]);
 
     return {
       id: def.id,
@@ -68,8 +75,14 @@ export function useEnergyStatus() {
           supabase
             .from(LIVE_TABLE)
             .select("device_id, sensor, voltage_v, current_a, voltage, current, power_w, energy_kwh, recorded_at, updated_at")
-            .eq("device_id", "esp32-monitoring"),
-          supabase.from(TOGGLE_TABLE).select("group_id, is_on"),
+            // Sensor names identify the monitoring zones. Do not hard-code a
+            // device id here: the active Node-RED device is configurable and
+            // may differ between deployments (for example esp32-iot-meter).
+            .order("updated_at", { ascending: false }),
+          supabase
+            .from(TOGGLE_TABLE)
+            .select("device_id, sensor, is_on")
+            .eq("device_id", SWITCH_DEVICE_ID),
         ]);
 
       if (cancelled) return;
@@ -113,11 +126,12 @@ export function useEnergyStatus() {
       .subscribe();
 
     toggleChannel = supabase
-      .channel("pzem_status_changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: TOGGLE_TABLE }, (payload) => {
+      .channel("pzem_switches_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: TOGGLE_TABLE, filter: `device_id=eq.${SWITCH_DEVICE_ID}` }, (payload) => {
         const row = (payload.new ?? payload.old) as ToggleRow | null;
-        if (!row?.group_id || !ENERGY_GROUP_DEFS.some((def) => def.id === row.group_id)) return;
-        const groupId = row.group_id as GroupId;
+        if (!row?.sensor) return;
+        const groupId = (Object.entries(GROUP_TO_SWITCH_SENSOR).find(([, sensor]) => sensor === row.sensor)?.[0]) as GroupId | undefined;
+        if (!groupId) return;
         togglingRef.current.delete(groupId);
         setGroups((prev) => prev.map((group) =>
           group.id === groupId ? { ...group, isOn: row.is_on ?? group.isOn } : group
@@ -144,7 +158,8 @@ export function useEnergyStatus() {
     const { error: updateError } = await supabase
       .from(TOGGLE_TABLE)
       .update({ is_on: nextOn })
-      .eq("group_id", id);
+      .eq("device_id", SWITCH_DEVICE_ID)
+      .eq("sensor", GROUP_TO_SWITCH_SENSOR[id]);
 
     if (updateError) {
       setError(`Could not switch ${current.name}. Please try again.`);

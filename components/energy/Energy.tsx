@@ -1,7 +1,8 @@
 // Adjust these to match your actual Supabase schema.
-// Assumed table: "pzem_status"
+// Toggle table: "pzem_switches"
 //   id          uuid / bigint (pk)
-//   group_id    text            -- 'sala' | 'living-room' | 'master-bedroom'
+//   device_id   text            -- e.g. 'esp32-monitoring'
+//   sensor      text            -- 'sala' | 'livingroom' | 'master'
 //   ampere      numeric         -- live current reading, in Amps
 //   power       numeric         -- live power reading, in Watts
 //   energy      numeric         -- accumulated energy, in kWh
