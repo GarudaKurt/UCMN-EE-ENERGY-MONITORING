@@ -33,8 +33,23 @@ export const ENERGY_GROUP_DEFS: { id: GroupId; name: string; color: string }[] =
   { id: "master-bedroom", name: "Master Bedroom", color: "#37B24D" },
 ];
 
+// Home-page display order/labels. IDs remain tied to the actual sensor and
+// switch mappings; only the presentation sequence and label are changed.
+export const HOME_GROUP_DEFS: { id: GroupId; name: string; color: string }[] = [
+  { id: "master-bedroom", name: "Sala", color: "#37B24D" },
+  { id: "living-room", name: "CR", color: "#FA7355" },
+  { id: "sala", name: "Master Bedroom", color: "#5242FF" },
+];
+
 export const SENSOR_TO_GROUP: Record<string, GroupId> = {
   Sala: "sala",
+  sala: "sala",
   "Living Room": "living-room",
+  living: "living-room",
+  livingroom: "living-room",
+  living_room: "living-room",
+  "living-room": "living-room",
   "Master Bedroom": "master-bedroom",
+  master: "master-bedroom",
+  master_bedroom: "master-bedroom",
 };

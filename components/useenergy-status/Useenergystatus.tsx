@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ENERGY_GROUP_DEFS, EnergyGroup, GroupId, SENSOR_TO_GROUP } from "../energy/Energy";
+import { HOME_GROUP_DEFS, EnergyGroup, GroupId, SENSOR_TO_GROUP } from "../energy/Energy";
 
 const LIVE_TABLE = "live_sensor_readings";
 const TOGGLE_TABLE = "pzem_switches";
@@ -33,7 +33,7 @@ interface ToggleRow {
 }
 
 function toGroups(liveRows: LiveSensorRow[], toggleRows: ToggleRow[]): EnergyGroup[] {
-  return ENERGY_GROUP_DEFS.map((def) => {
+  return HOME_GROUP_DEFS.map((def) => {
     const matchingRows = liveRows.filter((row) => SENSOR_TO_GROUP[row.sensor ?? ""] === def.id);
     const liveRow = matchingRows.sort((a, b) =>
       new Date(b.updated_at ?? b.recorded_at ?? 0).getTime() -
