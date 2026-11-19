@@ -13,7 +13,7 @@ import type { GroupId } from "@/components/energy/Energy";
 const ROOMS = [
   {
     id: "master-bedroom",
-    label: "Master Bedroom",
+    label: "Sala",
     deviceId: "PZEM-MASTER-BEDROOM",
     icon: BedDouble,
     accent: {
@@ -24,20 +24,8 @@ const ROOMS = [
     },
   },
   {
-    id: "sala",
-    label: "Sala",
-    deviceId: "PZEM-SALA",
-    icon: Sofa,
-    accent: {
-      chipBg: "bg-amber-50",
-      chipText: "text-amber-700",
-      ring: "ring-amber-300",
-      dot: "bg-amber-500",
-    },
-  },
-  {
     id: "living-room",
-    label: "Living Room",
+    label: "CR",
     deviceId: "PZEM-LIVING-ROOM",
     icon: Armchair,
     accent: {
@@ -45,6 +33,18 @@ const ROOMS = [
       chipText: "text-emerald-700",
       ring: "ring-emerald-300",
       dot: "bg-emerald-500",
+    },
+  },
+  {
+    id: "sala",
+    label: "Master Bedroom",
+    deviceId: "PZEM-SALA",
+    icon: Sofa,
+    accent: {
+      chipBg: "bg-amber-50",
+      chipText: "text-amber-700",
+      ring: "ring-amber-300",
+      dot: "bg-amber-500",
     },
   },
 ];
